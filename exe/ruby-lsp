@@ -75,12 +75,22 @@ if ENV["BUNDLE_GEMFILE"].nil?
     exit(78)
   end
 
-  bundler_path = File.join(Gem.default_bindir, "bundle")
-  base_command = (!Gem.win_platform? && File.exist?(bundler_path) ? "#{Gem.ruby} #{bundler_path}" : "bundle").dup
-
-  if env["BUNDLER_VERSION"]
-    base_command << " _#{env["BUNDLER_VERSION"]}_"
+  user_bundler_path = env["BUNDLER_VERSION"] && begin
+  path = File.join(RubyLsp.effective_bindir, "bundle")
+    File.exist?(path) ? path : nil
   end
+
+  if user_bundler_path && !Gem.win_platform? && File.exist?(bundler_path)
+    base_command = "#{Gem.ruby} #{user_bundler_path}".dup
+  else
+    bundler_path = File.join(Gem.default_bindir, "bundle")
+    base_command = (!Gem.win_platform? && File.exist?(bundler_path) ? "#{Gem.ruby} #{bundler_path}" : "bundle").dup
+
+    if env["BUNDLER_VERSION"] && RubyLsp.rubygems_binstub?(bundler_path)
+      base_command << " _#{env["BUNDLER_VERSION"]}_"
+    end
+  end
+
 
   exit exec(env, "#{base_command} exec ruby-lsp #{ARGV.join(" ")}".strip)
 end
